@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>画出你的想法吧</title>
+</head>
+<body>
+    <canvas id="workspace" width="800" height="600">
+        你的浏览器不支持HTML5
+    </canvas>
+    <script src="js/diag.js"></script>
+    <script src="js/brush.js"></script>
+    <script src="js/workspace.js"></script>
+    <script>
+        var ws = new Workspace(document.getElementById("workspace"));
+        ws.addBrush(BaseBrush);
+        ws.render();
+    </script>
+</body>
+</html>
