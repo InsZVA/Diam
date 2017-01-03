@@ -5,6 +5,7 @@
 const WS_READY = 0;
 const WS_SELECTED = 1;
 const WS_DRAW = 2;
+const WS_RESIZING = 3;
 // brush board
 const BB_X = 0;
 const BB_Y = 0;
@@ -23,9 +24,9 @@ function Workspace(canvas) {
 
     canvas.onmouseup = this.onmouseup.bind(this);
     canvas.onkeyup = this.onkeyup.bind(this);
-    //canvas.onmousedown = this.onmousedown.bind(this);
-    //canvas.onmouseover = this.onmouseover.bind(this);
-    canvas.timer = setInterval(this.render.bind(this), 100);
+    canvas.onmousedown = this.onmousedown.bind(this);
+    canvas.onmousemove = this.onmousemove.bind(this);
+    canvas.timer = setInterval(this.render.bind(this), 10);
 }
 
 Workspace.prototype.renderBrushes = function() {
@@ -67,6 +68,7 @@ Workspace.prototype.addBrush = function(brush) {
 Workspace.prototype.selectElement = function(x, y) {
     for (var i = 0; i < this.elements.length; i++) {
         if (this.elements[i].posInSelectArea(x, y)) {
+            this.unselect();
             this.select(this.elements[i]);
             return true;
         }
@@ -123,7 +125,7 @@ Workspace.prototype.remove = function (b) {
 Workspace.prototype.draw = function (x, y) {
     if (this.currentBrush) {
         this.state = WS_DRAW;
-        var newElement = new this.currentBrush.element(x, y);
+        var newElement = new this.currentBrush.element(this, x, y);
         this.elements.push(newElement);
     }
 };
@@ -132,27 +134,35 @@ Workspace.prototype.onmouseup = function(event) {
     var x = event.offsetX;
     var y = event.offsetY;
 
-    if (x < BB_WIDTH) {
-        var xIndex = parseInt(x / (BB_MARGIN + BI_WIDTH));
-        var yIndex = parseInt(y / (BB_MARGIN + BI_HEIGHT));
-        var i = yIndex * BB_N_X + xIndex;
-        if (i >= this.brushes.length) {
-            this.unselect();
-            return;
-        }
-        this.select(this.brushes[i]);
-        return;
-    }
+    switch (this.state) {
+        case WS_READY:
+            if (x < BB_WIDTH) {
+                var xIndex = parseInt(x / (BB_MARGIN + BI_WIDTH));
+                var yIndex = parseInt(y / (BB_MARGIN + BI_HEIGHT));
+                var i = yIndex * BB_N_X + xIndex;
+                if (i >= this.brushes.length) {
+                    this.unselect();
+                    return;
+                }
+                this.select(this.brushes[i]);
+                return;
+            }
 
-    if (!this.selectElement(x, y))
-        switch (this.state) {
-            case WS_READY:
-                break;
-            case WS_DRAW:
+            if (!this.selectElement(x, y))
+                this.unselect();
+            break;
+        case WS_DRAW:
+            if (!this.selectElement(x, y))
                 this.draw(x, y);
-                break;
-            case WS_SELECTED:
-        }
+            break;
+        case WS_SELECTED:
+            if (!this.selectElement(x, y))
+                this.unselect();
+            break;
+        case WS_RESIZING:
+            this.state = WS_SELECTED;
+            this.currentElement.endResize(x, y);
+    }
 };
 
 Workspace.prototype.onkeyup = function (e) {
@@ -163,4 +173,35 @@ Workspace.prototype.onkeyup = function (e) {
                     this.remove(this.currentElement);
             }
     }
+};
+
+Workspace.prototype.onmousemove = function (e) {
+    var x = event.offsetX;
+    var y = event.offsetY;
+
+    this.canvas.style.cursor = "default";
+    switch (this.state) {
+        case WS_SELECTED:
+            this.canvas.style.cursor = this.currentElement.cursor(x, y);
+            break;
+        case WS_RESIZING:
+            this.currentElement.resizing(x, y);
+            this.render();
+    }
+};
+
+Workspace.prototype.onmousedown = function (e) {
+    var x = event.offsetX;
+    var y = event.offsetY;
+
+    switch (this.state) {
+        case WS_SELECTED:
+            if (this.currentElement.startResize(x, y)) {
+                this.state = WS_RESIZING;
+            }
+    }
+};
+
+Workspace.prototype.getString = function () {
+
 };
