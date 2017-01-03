@@ -6,6 +6,7 @@ const WS_READY = 0;
 const WS_SELECTED = 1;
 const WS_DRAW = 2;
 const WS_RESIZING = 3;
+const WS_ARROWING = 4;
 // brush board
 const BB_X = 0;
 const BB_Y = 0;
@@ -162,6 +163,18 @@ Workspace.prototype.onmouseup = function(event) {
         case WS_RESIZING:
             this.state = WS_SELECTED;
             this.currentElement.endResize(x, y);
+            break;
+        case WS_ARROWING:
+            var pointFunc = null;
+            for (var i = 0; i < this.elements.length; i++) {
+                var ea = this.elements[i].pointArrow(x, y);
+                if (ea != EA_NONE) {
+                    pointFunc = this.elements[i].arrowPoint(ea);
+                    break;
+                }
+            }
+            this.currentElement.endArrow(this.elements[i], pointFunc);
+            this.state = WS_SELECTED;
     }
 };
 
@@ -187,6 +200,16 @@ Workspace.prototype.onmousemove = function (e) {
         case WS_RESIZING:
             this.currentElement.resizing(x, y);
             this.render();
+            break;
+        case WS_ARROWING:
+            for (var i = 0; i < this.elements.length; i++) {
+                if (this.elements[i] == this.currentElement) continue;
+                if (this.elements[i].pointArrow(x, y) != EA_NONE) {
+                    console.log("pointer");
+                    this.canvas.style.cursor = "pointer"; // TODO
+                    break;
+                }
+            }
     }
 };
 
@@ -196,12 +219,67 @@ Workspace.prototype.onmousedown = function (e) {
 
     switch (this.state) {
         case WS_SELECTED:
-            if (this.currentElement.startResize(x, y)) {
+            if (this.currentElement.startArrow(x, y)) {
+                this.state = WS_ARROWING;
+            } else if (this.currentElement.startResize(x, y)) {
                 this.state = WS_RESIZING;
             }
     }
 };
 
-Workspace.prototype.getString = function () {
+Workspace.prototype.getString = function (width) {
+    if (!width) {
+        var lines = [];
+        var left = this.elements.slice(0);
+        var line = 0;
 
+        // Push all them to lines
+        while (left.length) {
+            //Find the top
+            var top = -1;
+            for (var i = 0; i < left.length; i++) {
+                if (top < 0 || left[i].y < left[top].y) {
+                    top = i;
+                }
+            }
+
+            lines[line] = [left[top]];
+            var bottomY = left[top].y + left[top].height;
+            var t = left[top].y;
+            left.splice(top, 1);
+            top = t;
+
+            //Find the bottom of this line
+            for (var i = 0; i < left.length; i++) {
+                if (left[i].y > top && left[i].y < bottomY) {
+                    bottomY = left[i].y + left[i].height;
+                }
+            }
+
+            var newLeft = [];
+            //Push all
+            for (var i = 0; i < left.length; i++) {
+                if (left[i].y > top && left[i].y < bottomY)
+                    lines[line].push(left[i]);
+                else
+                    newLeft.push(left[i]);
+            }
+            left = newLeft;
+            line++;
+        }
+
+        console.log("Step1 Push to lines:", lines);
+
+        var stringLines = [];
+        for (var i = 0; i < lines.length; i++) {
+            lines[i].forEach(function (l) {
+                if (!stringLines[i])
+                    stringLines[i] = [l.text];
+                else
+                    stringLines[i].push(l.text);
+            });
+        }
+
+        console.log(stringLines);
+    }
 };

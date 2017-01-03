@@ -7,6 +7,7 @@ const E_NORMAL_HEIGHT = 32;
 const ES_NORMAL = 0;
 const ES_SELECTED = 1;
 const ES_RESIZING = 2;
+const ES_ARROWING = 3;
 // element resize
 const ER_NONE = 0;
 const ER_MOVE = 1;
@@ -35,9 +36,14 @@ function DiagramElement(ws, x, y, w, h) {
     this.edit = null;
     this.text = "";
     this.ws = ws; // the workspace this belongs to
+
     this.resize = ER_NONE;
     this.resizeX = 0; // when the resize begin, the x
     this.resizeY = 0;
+
+    this.arrow = EA_NONE;
+    this.arrows = [[], [], [], [], []];
+    this.arrowStyle = AS_ARROW;
 }
 
 DiagramElement.prototype.render = function(ctx) {
@@ -55,6 +61,12 @@ DiagramElement.prototype.render = function(ctx) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(this.text, this.x + this.width / 2, this.y + this.height/2);
+
+    this.arrows.forEach(function (a) {
+        a.forEach(function (aa) {
+            aa.render(ctx);
+        });
+    });
 };
 
 DiagramElement.prototype.renderCircle = function (ctx) {
@@ -304,6 +316,49 @@ DiagramElement.prototype.getEPoint = function () {
         x: this.x + this.width,
         y: this.y + this.height / 2
     }
+};
+
+DiagramElement.prototype.startArrow = function (x, y, style) {
+    var ea = this.pointArrow(x, y);
+    if (ea == EA_NONE) return false;
+    this.arrow = ea;
+    this.arrowStyle = style || AS_ARROW;
+    this.state = ES_ARROWING;
+    return true;
+};
+
+DiagramElement.prototype.arrowPoint = function (ea) {
+    switch (ea) {
+        case EA_N:
+            return this.getNPoint;
+        case EA_S:
+            return this.getSPoint;
+        case EA_E:
+            return this.getEPoint;
+        case EA_W:
+            return this.getWPoint;
+        case EA_NONE:
+            return null;
+    }
+};
+
+DiagramElement.prototype.pointArrowPoint = function (x, y) {
+    return this.arrowPoint(this.pointArrow(x, y));
+};
+
+DiagramElement.prototype.newArrow = function (endElem, pointFunc) {
+    this.arrows[this.arrow].push(new BaseArrow(this, endElem, this.arrowPoint(this.arrow),
+        pointFunc, this.arrowStyle));
+};
+
+DiagramElement.prototype.endArrow = function (endElem, pointFunc) {
+    if (pointFunc) {
+        this.newArrow(endElem, pointFunc);
+    } else {
+
+    }
+    this.arrow = EA_NONE;
+    this.state = ES_SELECTED;
 };
 
 var ModuleElement = new DiagramElement();
